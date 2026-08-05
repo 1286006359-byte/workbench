@@ -892,9 +892,38 @@ async function syncFromCloud(){
 function updateCloudBadge(){
   const badge = document.getElementById("cloud-badge");
   if(!badge) return;
-  if(cloudStatus==="loading"){ badge.className="cloud-badge loading"; badge.title="正在同步…"; }
-  else if(cloudStatus==="synced"){ badge.className="cloud-badge synced"; badge.title="已从飞书同步"; }
-  else{ badge.className="cloud-badge offline"; badge.title="云端不可用，使用本地数据"; }
+  if(cloudStatus==="loading"){ badge.className="cloud-badge loading"; badge.textContent="同步中"; badge.title="正在同步…"; }
+  else if(cloudStatus==="synced"){ badge.className="cloud-badge synced"; badge.textContent="已同步"; badge.title="已从飞书同步"; }
+  else{ badge.className="cloud-badge offline"; badge.textContent="离线"; badge.title="云端不可用，使用本地数据"; }
+}
+/* ========== 飞书写回 ========== */
+const SELECT_REVERSE={
+  todo:{section:{work:"工作",life:"生活"}},
+  checkin:{section:{summary:"今日工作汇总",reflection:"工作反思"}},
+  sport:{section:{design:"设计",photo:"摄影",video:"视频",trend:"热点"}},
+};
+function dateToMs(ds){if(!ds)return null;try{const d=new Date(ds);return isNaN(d)?null:Math.floor(d.getTime());}catch(e){return null;}}
+async function saveFeishuRecord(tableKey,item){
+  try{
+    const info=FEISHU_CFG.tables[tableKey]; if(!info)return;
+    const token=await getFsToken();
+    const ff={};
+    for(let [ln,fn] of Object.entries(info.fields).map(([k,v])=>[v,k])){
+      let val=item[ln]; if(val===undefined||val===null)continue;
+      if(ln==="date"&&typeof val==="string"){const ms=dateToMs(val);if(ms)ff[fn]=ms;continue;}
+      const sm=SELECT_REVERSE[tableKey]&&SELECT_REVERSE[tableKey][ln];
+      if(sm&&typeof val==="string"){ff[fn]=sm[val]||val;continue;}
+      ff[fn]=val;
+    }
+    const isUpdate=!!item.id&&item.id.startsWith("rec");
+    const path=isUpdate?`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records/${item.id}`:`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records`;
+    const method=isUpdate?"PUT":"POST";
+    const url=FEISHU_CFG.corsProxy+"https://open.feishu.cn/open-apis"+path;
+    const resp=await fetch(url,{method,headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({fields:ff})});
+    const r=await resp.json();
+    if(r.code!==0){console.log("飞书写回失败:",r.msg);return null;}
+    return r.data&&r.data.record?r.data.record.record_id:null;
+  }catch(e){console.log("飞书写回异常:",e.message);return null;}
 }
 let searchQ = "";
 let pomo = { running:false, remain:25*60, total:25*60 };   // 番茄钟状态（内存态，跨渲染保留）
@@ -1170,10 +1199,10 @@ function wireHome(){
     e.stopPropagation(); const m=modOf(el.dataset.mkey), x=find(el); if(!x) return;
     if(m.type==="todo"){ x.done=!x.done; }
     else if(m.type==="checkin"){ x.log=x.log||{}; const t=today(); x.log[t]?delete x.log[t]:x.log[t]=true; }
-    persist();
+    persist(); saveFeishuRecord(el.dataset.mkey,x);
   });
-  $("#screen").querySelectorAll(".js-pin-inc").forEach(el=>el.onclick=e=>{ e.stopPropagation(); const x=find(el); if(!x) return; x.current=(+x.current||0)+1; persist(); });
-  $("#screen").querySelectorAll(".js-pin-dec").forEach(el=>el.onclick=e=>{ e.stopPropagation(); const x=find(el); if(!x) return; x.current=Math.max(0,(+x.current||0)-1); persist(); });
+  $("#screen").querySelectorAll(".js-pin-inc").forEach(el=>el.onclick=e=>{ e.stopPropagation(); const x=find(el); if(!x) return; x.current=(+x.current||0)+1; persist(); saveFeishuRecord(el.dataset.mkey,x); });
+  $("#screen").querySelectorAll(".js-pin-dec").forEach(el=>el.onclick=e=>{ e.stopPropagation(); const x=find(el); if(!x) return; x.current=Math.max(0,(+x.current||0)-1); persist(); saveFeishuRecord(el.dataset.mkey,x); });
   $("#screen").querySelectorAll(".js-pin-open").forEach(el=>el.onclick=e=>{ e.stopPropagation(); openEditor(el.dataset.mkey, find(el)); });
   // 番茄钟控制
   const tg=$("#pomo-toggle"); if(tg) tg.onclick=()=>{ pomo.running=!pomo.running; pomoUpdate(); };
@@ -1489,10 +1518,10 @@ function wireModule(key){ const m=modOf(key);
     const x=(data[key]).find(i=>i.id==el.dataset.id);
     if(m.type==="todo") x.done=!x.done;
     else if(m.type==="checkin"){ x.log=x.log||{}; const t=today(); x.log[t]?delete x.log[t]:x.log[t]=true; }
-    persist(); });
+    persist(); saveFeishuRecord(key,x); });
   $("#screen").querySelectorAll("[data-edit]").forEach(el=>el.onclick=()=>openEditor(key,(data[key]).find(i=>i.id==el.dataset.edit)));
   $("#screen").querySelectorAll(".js-del").forEach(el=>el.onclick=e=>{ e.stopPropagation(); e.preventDefault(); confirmDelete(key, el.dataset.id); });
-  $("#screen").querySelectorAll(".js-pin").forEach(el=>el.onclick=e=>{ e.stopPropagation(); e.preventDefault(); const x=(data[key]).find(i=>i.id==el.dataset.id); x.pinned=!x.pinned; persist(); });
+  $("#screen").querySelectorAll(".js-pin").forEach(el=>el.onclick=e=>{ e.stopPropagation(); e.preventDefault(); const x=(data[key]).find(i=>i.id==el.dataset.id); x.pinned=!x.pinned; persist(); saveFeishuRecord(key,x); });
 }
 
 /* ---------- EDITOR MODAL (per type) ---------- */
@@ -1572,7 +1601,7 @@ function openEditor(key,item){
     // save image
     d.image=(val("#f-image")||"").trim();
     if(!editing) (data[key]=data[key]||[]).unshift(d);
-    persist(); close();
+    persist(); close(); saveFeishuRecord(key,d);
   };
 }
 
