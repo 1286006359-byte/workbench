@@ -585,12 +585,124 @@
   .spend-cap { font-size:11.5px; color:var(--text-secondary); }
 
   .hidden { display:none !important; }
+
+  /* ============================================================
+     MOBILE RESPONSIVE — 移动端适配
+     ============================================================ */
+  .mobile-menu-btn { display:none; }
+  .sidebar-overlay { display:none; }
+
+  @media (max-width: 768px) {
+    body { min-width: 0 !important; font-size: 13px; }
+
+    /* 移动端菜单按钮 */
+    .mobile-menu-btn {
+      display: flex; align-items: center; justify-content: center;
+      position: fixed; top: 12px; left: 12px; z-index: 40;
+      width: 40px; height: 40px; border-radius: var(--radius-tile);
+      background: var(--surface-card); border: 1px solid var(--border);
+      box-shadow: var(--shadow-card); cursor: pointer;
+    }
+    .mobile-menu-btn svg { width: 20px; height: 20px; color: var(--text); }
+
+    /* 侧栏变为抽屉 */
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform .25s ease;
+      box-shadow: var(--shadow-overlay);
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    /* 遮罩层 */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; z-index: 35;
+      background: rgba(0,0,0,.3);
+    }
+    .sidebar-overlay.show { display: block; }
+
+    /* 主内容区全宽 */
+    .main { margin-left: 0 !important; padding: 56px 14px 40px !important; }
+    .main > #screen { max-width: 100% !important; }
+
+    /* 标题缩小 */
+    .header h2 { font-size: 22px; }
+    .header { flex-wrap: wrap; gap: 8px; }
+
+    /* hero banner 缩小 */
+    .hero-banner { padding: 22px 20px; min-height: 160px; margin-bottom: 16px; }
+    .hero-banner .hi { font-size: 26px; }
+    .hero-banner .sub { font-size: 12px; }
+    .hero-banner .hstats { gap: 16px; margin-top: 14px; }
+    .hero-banner .hstat .n { font-size: 18px; }
+    .hero-banner .hstat + .hstat { padding-left: 16px; }
+
+    /* 网格变单列 */
+    .g-4, .g-3, .g-2, .g-main { grid-template-columns: 1fr !important; }
+    .modcard-grid { grid-template-columns: 1fr !important; }
+    .rings { grid-template-columns: repeat(2, 1fr) !important; }
+    .quick-grid { grid-template-columns: 1fr !important; }
+    .pin-list { grid-template-columns: 1fr !important; }
+
+    /* 卡片间距缩小 */
+    .grid { gap: 12px; }
+    .modcard-grid { gap: 10px; }
+
+    /* 引用区缩小 */
+    .quote { padding: 16px 18px; }
+    .quote .txt { font-size: 16px; }
+
+    /* 模块详情页适配 */
+    .detail-head { flex-wrap: wrap; gap: 8px; }
+    .detail-grid { grid-template-columns: 1fr !important; }
+
+    /* 工具栏 */
+    .toolbar { flex-wrap: wrap; gap: 8px; }
+
+    /* 编辑器全宽 */
+    .editor-modal { width: 92vw !important; max-width: 92vw !important; }
+    .editor-form { grid-template-columns: 1fr !important; }
+
+    /* 番茄钟 */
+    .pomo-display { font-size: 48px !important; }
+
+    /* 表格水平滚动 */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* 侧栏内部适配 */
+    .sidebar .brand { padding: 20px 18px 14px; }
+    .sidebar .brand h1 { font-size: 17px; }
+
+    /* 趋势图 */
+    .trend-svg { height: 120px; }
+
+    /* 概况卡片 */
+    .modcard { padding: 12px 14px; }
+    .modcard .mc-name { font-size: 14px; }
+
+    /* 记账明细 */
+    .money-row { flex-wrap: wrap; gap: 6px; }
+
+    /* section 标签 */
+    .sec-title { font-size: 12px; margin: 14px 2px 8px; }
+  }
+
+  @media (max-width: 380px) {
+    .rings { grid-template-columns: 1fr !important; }
+    .hero-banner .hi { font-size: 22px; }
+    .header h2 { font-size: 19px; }
+  }
 </style>
 </head>
 <body>
+<!-- 移动端菜单按钮 -->
+<button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="菜单">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<!-- 移动端遮罩层 -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 <div class="layout">
   <!-- sidebar -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div class="brand-row">
         <div class="ava" id="ava" title="点击更换头像"><img src="assets/avatar.jpg" alt="头像" id="avaImg"/><span class="cam" id="avaCam"></span></div>
@@ -1723,6 +1835,28 @@ syncFromCloud();
       // 没有热点文件时静默失败，继续使用原有数据，不影响页面正常运行
       console.log('未找到当日热点文件，使用默认数据');
     });
+})();
+</script>
+<script>
+// 移动端侧栏开关
+(function(){
+  var btn = document.getElementById('mobileMenuBtn');
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  if(!btn || !sidebar || !overlay) return;
+  function toggleSidebar(){
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  btn.addEventListener('click', toggleSidebar);
+  overlay.addEventListener('click', toggleSidebar);
+  // 点击导航项后自动关闭侧栏
+  sidebar.addEventListener('click', function(e){
+    if(e.target.closest('.navi')){
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+    }
+  });
 })();
 </script>
 </body>
