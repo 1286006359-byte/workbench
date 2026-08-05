@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>安竸的工作台</title>
+<style>
+:root{
+  --page-bg:#ffffff; --card:#f5f5f7; --nested:#f0f0f2;
+  --border:#e5e5e7; --border-input:#d8d8dc;
+  --text:#1a1a1e; --text-2:#888890; --text-3:#b0b0b8;
+  --accent:#2a2a2e; --on-accent:#fff;
+  --m1:#6a8a7a; --m2:#6a7a8a; --m3:#9a8a6a; --m4:#8a6a6a; --m5:#7a6a8a;
+  --danger:#9a5a5a;
+  --font:"Microsoft YaHei",-apple-system,"PingFang SC",system-ui,sans-serif;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --tab-h:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--page-bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+svg{display:block}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea,select{font-family:inherit;font-size:14px}
+.hidden{display:none!important}
+
+/* ===== 顶部状态栏 ===== */
+.topbar{position:sticky;top:0;z-index:20;background:var(--page-bg);padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.topbar .greet{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.topbar .date{font-size:11px;color:var(--text-2);margin-top:2px}
+.topbar .sync{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 8px;border-radius:99px}
+.sync.loading{background:rgba(255,193,7,.15);color:#ffa000}
+.sync.synced{background:rgba(76,175,80,.15);color:#4caf50}
+.sync.offline{background:rgba(158,158,158,.15);color:#9e9e9e}
+.sync::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.sync.loading::before{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ===== 主内容区 ===== */
+.screen{padding:14px 14px calc(var(--tab-h) + var(--safe-bottom) + 20px);min-height:100vh}
+.screen > * + *{margin-top:14px}
+
+/* ===== 时钟卡片 ===== */
+.clock-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 18px;text-align:center}
+.clock-card .time{font-size:36px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.clock-card .quote{font-size:12px;color:var(--text-2);margin-top:10px;font-style:italic;line-height:1.5}
+
+/* ===== 概览环 ===== */
+.overview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.ov-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center}
+.ov-card .ring-wrap{position:relative;width:56px;height:56px;margin:0 auto 6px}
+.ov-card .ring-wrap svg{transform:rotate(-90deg);width:100%;height:100%}
+.ov-card .ring-wrap .pct{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:700}
+.ov-card .lbl{font-size:12px;font-weight:600}
+.ov-card .sub{font-size:10px;color:var(--text-2)}
+
+/* ===== 快速记录 ===== */
+.quick-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.qbtn{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;background:var(--card);border:1px solid var(--border);text-align:left;transition:transform .1s}
+.qbtn:active{transform:scale(.96)}
+.qbtn .ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+.qbtn .lb{font-size:13px;font-weight:600}
+
+/* ===== 模块卡片 ===== */
+.sec-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);padding:4px 2px;display:flex;align-items:center;gap:8px}
+.sec-label::before{content:"";width:14px;height:1px;background:var(--text)}
+
+.module-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;transition:transform .1s}
+.module-card:active{transform:scale(.98)}
+.module-card .mc-head{display:flex;align-items:center;gap:10px}
+.module-card .mc-ic{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+.module-card .mc-title{flex:1;min-width:0}
+.module-card .mc-name{font-size:14px;font-weight:700}
+.module-card .mc-desc{font-size:11px;color:var(--text-2)}
+.module-card .mc-stat{font-size:12px;font-weight:700;text-align:right}
+
+/* ===== 待办列表 ===== */
+.todo-item{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:transform .1s}
+.todo-item:active{transform:scale(.98)}
+.todo-check{width:22px;height:22px;border-radius:6px;border:2px solid var(--border-input);flex:0 0 auto;display:grid;place-items:center;margin-top:1px;transition:all .15s}
+.todo-check.done{background:var(--accent);border-color:var(--accent)}
+.todo-check.done svg{color:var(--on-accent)}
+.todo-check svg{opacity:0;transition:opacity .15s}
+.todo-check.done svg{opacity:1}
+.todo-body{flex:1;min-width:0}
+.todo-title{font-size:14px;font-weight:500;line-height:1.4}
+.todo-title.done{text-decoration:line-through;color:var(--text-2)}
+.todo-meta{display:flex;gap:6px;margin-top:4px;flex-wrap:wrap}
+.tag{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600}
+.tag-work{background:#e8eee4;color:var(--m1)}
+.tag-life{background:#eceaf0;color:var(--m5)}
+.tag-p0{background:#f0e8e4;color:#9a4a3c}
+.tag-p1{background:#f0ebe0;color:#a68b5b}
+.tag-p2{background:#e8eee4;color:#7a8c6f}
+
+/* ===== 笔记/进程卡片 ===== */
+.note-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px;transition:transform .1s}
+.note-card:active{transform:scale(.98)}
+.note-card .nc-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.note-card .nc-tag{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600}
+.note-card .nc-title{font-size:14px;font-weight:600;flex:1;min-width:0}
+.note-card .nc-body{font-size:13px;color:var(--text-2);line-height:1.5}
+.note-card .nc-date{font-size:10px;color:var(--text-3);margin-top:6px}
+
+/* ===== 链接卡片（每日观看） ===== */
+.link-card{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:transform .1s}
+.link-card:active{transform:scale(.98)}
+.link-card .lc-ic{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto;background:var(--nested)}
+.link-card .lc-body{flex:1;min-width:0}
+.link-card .lc-name{font-size:14px;font-weight:600}
+.link-card .lc-desc{font-size:11px;color:var(--text-2)}
+.link-card .lc-arrow{color:var(--text-3);flex:0 0 auto}
+
+/* ===== 记账 ===== */
+.money-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+.money-item .mi-ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+.money-item .mi-body{flex:1;min-width:0}
+.money-item .mi-title{font-size:14px;font-weight:500}
+.money-item .mi-cat{font-size:11px;color:var(--text-2)}
+.money-item .mi-amount{font-size:15px;font-weight:700}
+.money-item .mi-amount.expense{color:var(--danger)}
+.money-item .mi-amount.income{color:var(--m1)}
+.money-summary{display:flex;gap:10px;margin-bottom:10px}
+.money-sum-card{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.money-sum-card .lb{font-size:11px;color:var(--text-2)}
+.money-sum-card .vl{font-size:18px;font-weight:700;margin-top:2px}
+
+/* ===== 阅读进度 ===== */
+.read-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px}
+.read-item .ri-title{font-size:14px;font-weight:600;margin-bottom:8px}
+.read-item .ri-bar{height:6px;background:var(--nested);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.read-item .ri-fill{height:100%;border-radius:3px;transition:width .3s}
+.read-item .ri-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--text-2)}
+.read-item .ri-note{font-size:12px;color:var(--text-2);margin-top:6px;font-style:italic}
+
+/* ===== 底部导航 ===== */
+.tabbar{position:fixed;bottom:0;left:0;right:0;height:calc(var(--tab-h) + var(--safe-bottom));background:var(--page-bg);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);z-index:30}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding-top:6px;color:var(--text-3);transition:color .15s}
+.tab.active{color:var(--text)}
+.tab svg{width:22px;height:22px}
+.tab .tl{font-size:10px;font-weight:500}
+
+/* ===== 浮动添加按钮 ===== */
+.fab{position:fixed;right:16px;bottom:calc(var(--tab-h) + var(--safe-bottom) + 16px);width:50px;height:50px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:25;transition:transform .15s}
+.fab:active{transform:scale(.9)}
+.fab svg{width:24px;height:24px}
+
+/* ===== 模态弹窗 ===== */
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:var(--page-bg);width:100%;max-width:500px;border-radius:16px 16px 0 0;max-height:85vh;overflow-y:auto;padding:20px 16px calc(var(--safe-bottom) + 20px);animation:sheetUp .25s ease}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal .mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal .mt{font-size:17px;font-weight:700}
+.modal .mc{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--text-2)}
+.modal .mc:active{background:var(--nested)}
+.modal .field{margin-bottom:14px}
+.modal .field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+.modal .field input,.modal .field textarea,.modal .field select{width:100%;padding:12px 14px;border:1px solid var(--border-input);border-radius:8px;background:var(--page-bg);color:var(--text);outline:none}
+.modal .field input:focus,.modal .field textarea:focus,.modal .field select:focus{border-color:var(--accent)}
+.modal .field textarea{resize:none;min-height:80px}
+.modal .chip-row{display:flex;gap:6px;flex-wrap:wrap}
+.modal .chip{padding:8px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:500;transition:all .15s}
+.modal .chip.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.modal .btn-row{display:flex;gap:8px;margin-top:8px}
+.modal .btn-primary{flex:1;padding:13px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-size:15px;font-weight:600;text-align:center}
+.modal .btn-primary:active{opacity:.8}
+.modal .btn-danger{padding:13px 16px;border-radius:10px;background:rgba(154,90,90,.1);color:var(--danger);font-size:14px;font-weight:600}
+.modal .btn-danger:active{opacity:.8}
+
+/* ===== 空状态 ===== */
+.empty{text-align:center;padding:40px 20px;color:var(--text-3)}
+.empty svg{width:40px;height:40px;margin:0 auto 10px;opacity:.4}
+.empty p{font-size:13px}
+
+/* ===== 章节标题 ===== */
+.sec-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-2);padding:6px 2px 4px}
+.sec-title svg{width:16px;height:16px;color:var(--text-3)}
+
+/* ===== 模块网格页 ===== */
+.mod-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.mod-tile{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 14px;transition:transform .1s}
+.mod-tile:active{transform:scale(.96)}
+.mod-tile .mt-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;margin-bottom:10px}
+.mod-tile .mt-name{font-size:14px;font-weight:700}
+.mod-tile .mt-desc{font-size:11px;color:var(--text-2);margin-top:2px}
+.mod-tile .mt-stat{font-size:13px;font-weight:700;margin-top:8px}
+
+/* ===== 加载提示 ===== */
+.loading-toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.7);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;z-index:50;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- 顶部状态栏 -->
+<header class="topbar">
+  <div>
+    <div class="greet">你好，也安</div>
+    <div class="date" id="topDate"></div>
+  </div>
+  <span class="sync loading" id="syncBadge">同步中</span>
+</header>
+
+<!-- 主内容 -->
+<main class="screen" id="screen"></main>
+
+<!-- 浮动添加按钮 -->
+<button class="fab" id="fabBtn" aria-label="添加">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<!-- 底部导航 -->
+<nav class="tabbar" id="tabbar">
+  <button class="tab active" data-view="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19h12v-8.5"/></svg>
+    <span class="tl">首页</span>
+  </button>
+  <button class="tab" data-view="todo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 6h11"/><path d="M8.5 12h11"/><path d="M8.5 18h11"/><circle cx="4.5" cy="6" r=".9"/><circle cx="4.5" cy="12" r=".9"/><circle cx="4.5" cy="18" r=".9"/></svg>
+    <span class="tl">计划</span>
+  </button>
+  <button class="tab" data-view="checkin">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5 6L14 5l2.5 7H21"/></svg>
+    <span class="tl">进程</span>
+  </button>
+  <button class="tab" data-view="more">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/></svg>
+    <span class="tl">更多</span>
+  </button>
+</nav>
+
+<!-- 模态弹窗容器 -->
+<div id="modalContainer"></div>
+
+<script>
+/* ============================================================
+   CONFIG — 与桌面版完全一致
+   ============================================================ */
+const CONFIG = {
+  storageKey: "maison-editoriale-v4",
+  owner: "安竸的工作台",
+  quotes: [
+    "风格不是被看见，而是被记住。",
+    "留白，是最高级的表达。",
+    "细节决定调性，节奏决定呼吸。",
+    "好的品味，是知道什么时候该停下。",
+    "今日收束，为下一期留好版面。",
+    "慢，是一种从容的奢侈。",
+    "复盘即编辑——删去冗余，留下本质。",
+  ],
+  modules: [
+    { key:"todo", name:"今日计划", icon:"list", color:"var(--accent)", type:"todo", desc:"每日要事 · 编辑清单",
+      sections:[ {key:"work",label:"工作",icon:"bolt"}, {key:"life",label:"生活",icon:"leaf"} ],
+      priorities:[ {key:"P0",label:"头条",color:"#f0e8e4",text:"#9a4a3c"}, {key:"P1",label:"专题",color:"#f0ebe0",text:"#a68b5b"}, {key:"P2",label:"随笔",color:"#e8eee4",text:"#7a8c6f"} ],
+      seed:[ {id:11,title:"完成今日核心写作 45min",priority:"P0",section:"work",done:false,note:""},
+             {id:12,title:"整理本周素材库",priority:"P1",section:"work",done:false,note:""},
+             {id:13,title:"回复邮件与消息",priority:"P2",section:"work",done:true,note:""},
+             {id:14,title:"晨间冥想 10min",priority:"P1",section:"life",done:false,note:""},
+             {id:15,title:"买菜做晚餐",priority:"P2",section:"life",done:false,note:""} ] },
+    { key:"checkin", name:"工作进程", icon:"activity", color:"var(--m1)", type:"note", desc:"每日工作记录 · 汇总与反思",
+      sections:[ {key:"summary",label:"今日工作汇总",icon:"list"}, {key:"reflection",label:"工作反思",icon:"pen"} ],
+      moods:["完成","进行中","待跟进","受阻"],
+      seed:[ {id:21,title:"完成编辑部周会内容整理",content:"整理本周选题方向",mood:"完成",section:"summary",date:isoToday()},
+             {id:22,title:"排版效率优化",content:"需要建立模板库",mood:"进行中",section:"reflection",date:isoToday()} ] },
+    { key:"read", name:"阅读打卡", icon:"book", color:"var(--m2)", type:"progress", unit:"页", desc:"在读好书 · 摘录与思考",
+      seed:[ {id:31,title:"《Style》",current:120,target:280,unit:"页",note:"简洁不是短，而是精准"},
+             {id:32,title:"《原子习惯》",current:90,target:260,unit:"页",note:"聚焦身份认同的养成"} ] },
+    { key:"sport", name:"每日观看", icon:"eye", color:"var(--m2)", type:"note", desc:"每日灵感巡览",
+      sections:[
+        { key:"design", label:"设计", icon:"compass", links:[{name:"花瓣网",url:"https://huaban.com",desc:"国内设计灵感"},{name:"Pinterest",url:"https://www.pinterest.com",desc:"全球创意视觉"}] },
+        { key:"photo", label:"摄影", icon:"image", links:[{name:"视觉中国",url:"https://www.vcg.com",desc:"专业摄影图库"},{name:"CNU视觉",url:"http://www.cnu.cc",desc:"摄影师社区"}] },
+        { key:"video", label:"视频", icon:"video", links:[{name:"Vimeo",url:"https://vimeo.com",desc:"创意短片"},{name:"B站",url:"https://www.bilibili.com",desc:"创作灵感"}] },
+        { key:"trend", label:"热点", icon:"flame", links:[{name:"Behance",url:"https://www.behance.net",desc:"设计趋势"},{name:"Dribbble",url:"https://dribbble.com",desc:"UI/UX灵感"}] },
+      ],
+      moods:["灵感","收藏","稍后读","已读"],
+      seed:[] },
+    { key:"money", name:"记账本", icon:"wallet", color:"var(--m4)", type:"finance", desc:"收支流水 · 分类占比",
+      categories:["餐饮","交通","购物","居家","娱乐","工资","其他"],
+      seed:[ {id:51,title:"手冲咖啡豆 250g",type:"expense",amount:128,category:"购物",date:isoToday()},
+             {id:52,title:"地铁通勤",type:"expense",amount:6,category:"交通",date:isoToday()},
+             {id:53,title:"专栏稿费",type:"income",amount:800,category:"工资",date:isoToday()} ] },
+    { key:"note", name:"灵感手记", icon:"pen", color:"var(--m5)", type:"note", desc:"文字 · 摘录 · 日常随想",
+      moods:["灵感","平静","低落","焦虑","疲惫"],
+      seed:[ {id:61,title:"关于留白的思考",content:"好的设计不在于加了什么，而在于减去什么后依然成立。",mood:"灵感",date:isoToday()} ] },
+    { key:"hot", name:"今日热点", icon:"flame", color:"var(--danger)", type:"note", desc:"趋势速览 · 点击直达原文",
+      moods:["收藏","稍后读","已读"], linkable:true, seed:[] },
+  ],
+};
+
+const ICONS = {
+  home:'<path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19h12v-8.5"/>',
+  list:'<path d="M8.5 6h11"/><path d="M8.5 12h11"/><path d="M8.5 18h11"/><circle cx="4.5" cy="6" r=".9"/><circle cx="4.5" cy="12" r=".9"/><circle cx="4.5" cy="18" r=".9"/>',
+  activity:'<path d="M3 12h4l2.5 6L14 5l2.5 7H21"/>',
+  book:'<path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v14H7.5A2.5 2.5 0 0 0 5 19.5z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19v4H7.5A2.5 2.5 0 0 1 5 19.5z"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  wallet:'<path d="M4 8a2 2 0 0 1 2-2h11a1.5 1.5 0 0 1 1.5 1.5V8"/><rect x="3.5" y="7.5" width="17" height="11.5" rx="2.5"/><circle cx="16.5" cy="13.2" r="1.3"/>',
+  pen:'<path d="M4 20l1.2-4L16 5.2l2.8 2.8L8 19z"/><path d="M14.2 7l2.8 2.8"/>',
+  flame:'<path d="M12 3c3 3 5 5.5 5 9a5 5 0 0 1-10 0c0-2 1-3.6 2.6-4.6C9 10.4 10.4 6.2 12 3z"/>',
+  grid:'<rect x="4" y="4" width="7" height="7" rx="1.6"/><rect x="13" y="4" width="7" height="7" rx="1.6"/><rect x="4" y="13" width="7" height="7" rx="1.6"/><rect x="13" y="13" width="7" height="7" rx="1.6"/>',
+  bolt:'<path d="M13 3 5 13h5l-1 8 8-11h-5z"/>',
+  leaf:'<path d="M20 4C10 4 4 9 4 17c0 1 .1 2 .5 3 5.5-9 9-9.5 15.5-16z"/><path d="M4.5 20c3-6 7-9.5 13-11.5"/>',
+  compass:'<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2z"/>',
+  image:'<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-7 7"/>',
+  video:'<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>',
+  check:'<path d="M5 12.5 10 17 19 7"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  close:'<path d="M6 6l12 12M18 6 6 18"/>',
+  chevron:'<path d="M9 5l7 7-7 7"/>',
+  trash:'<path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/>',
+  target:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/>',
+  calendar:'<rect x="4" y="5" width="16" height="16" rx="2.5"/><path d="M4 9.5h16"/><path d="M8 3v4"/><path d="M16 3v4"/>',
+  quote:'<path d="M9.5 7C7.6 7.9 6.5 9.6 6.5 12v5h5v-6H8.5c0-1.7.7-2.7 2.2-3.4zM19 7c-1.9.9-3 2.6-3 5v5h5v-6h-3c0-1.7.7-2.7 2.2-3.4z"/>',
+};
+function icon(name,size=22,sw=1.7){const p=ICONS[name]||ICONS.grid;return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`}
+
+/* ============================================================
+   飞书同步 — 与桌面版完全一致
+   ============================================================ */
+const FEISHU_CFG = {
+  appId:"cli_aaf98b2274789bdd", appSecret:"RKgD00k7Gq19hvYxnH7DogPRE0JgFsu0",
+  baseToken:"Z1bjblSqkaMxoAs5u7dc6p2fnPf",
+  corsProxies:["https://proxy.cors.sh/","https://corsproxy.io/?url=","https://api.allorigins.win/raw?url="],
+  tables:{
+    todo:{id:"tbl15ffmddGshUt1",fields:{"任务":"title","分区":"section","优先级":"priority","完成":"done","备注":"note","置顶":"pinned","日期":"date"}},
+    checkin:{id:"tblSEm1UwCeLabhv",fields:{"标题":"title","分区":"section","内容":"content","状态":"mood","置顶":"pinned","日期":"date"}},
+    read:{id:"tblg1VmUDELU3WnX",fields:{"书名":"title","当前页":"current","目标页":"target","单位":"unit","摘录想法":"note","置顶":"pinned"}},
+    sport:{id:"tblEdpMD0ffaDfMW",fields:{"标题":"title","分区":"section","内容":"content","标签":"mood","置顶":"pinned","日期":"date"}},
+    money:{id:"tbl3zfDG1dMGVPNJ",fields:{"项目":"title","类型":"type","金额":"amount","分类":"category","日期":"date"}},
+    note:{id:"tblbxlhCKOfYjR3A",fields:{"标题":"title","内容":"content","心情":"mood","置顶":"pinned","日期":"date"}},
+    hot:{id:"tblqmQGz9ZaoCqix",fields:{"标题":"title","内容":"content","标签":"mood","链接":"url","置顶":"pinned","日期":"date"}},
+  },
+  selectMap:{
+    todo:{section:{"工作":"work","生活":"life"}},
+    checkin:{section:{"今日工作汇总":"summary","工作反思":"reflection"}},
+    sport:{section:{"设计":"design","摄影":"photo","视频":"video","热点":"trend"}},
+  }
+};
+const SELECT_REVERSE={
+  todo:{section:{work:"工作",life:"生活"}},
+  checkin:{section:{summary:"今日工作汇总",reflection:"工作反思"}},
+  sport:{section:{design:"设计",photo:"摄影",video:"视频",trend:"热点"}},
+};
+let _fsToken=null,_fsTokenExp=0,_proxyIdx=0;
+function fsProxyUrl(fp){const p=FEISHU_CFG.corsProxies[_proxyIdx%FEISHU_CFG.corsProxies.length];const f="https://open.feishu.cn/open-apis"+fp;return p.includes("?url=")?p+encodeURIComponent(f):p+f}
+async function fsFetch(fp,opts){const ac=new AbortController();const to=setTimeout(()=>ac.abort(),12000);try{const url=fsProxyUrl(fp);const r=await fetch(url,{...opts,signal:ac.signal});clearTimeout(to);if(!r.ok)throw new Error("HTTP "+r.status);return await r.json()}catch(e){clearTimeout(to);_proxyIdx++;throw e}}
+async function getFsToken(){if(_fsToken&&Date.now()<_fsTokenExp)return _fsToken;let le;for(let i=0;i<FEISHU_CFG.corsProxies.length;i++){try{const r=await fsFetch("/auth/v3/tenant_access_token/internal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({app_id:FEISHU_CFG.appId,app_secret:FEISHU_CFG.appSecret})});if(r.code!==0)throw new Error(r.msg);_fsToken=r.tenant_access_token;_fsTokenExp=Date.now()+(r.expire-300)*1000;return _fsToken}catch(e){le=e;_proxyIdx++}}throw le||new Error("all proxies failed")}
+function parseFsVal(v,tk,fn){if(v===null||v===undefined)return null;if(typeof v==="boolean")return v;if(typeof v==="number")return v;if(typeof v==="string"){const m=FEISHU_CFG.selectMap[tk]&&FEISHU_CFG.selectMap[tk][fn];return m?(m[v]||v):v}if(Array.isArray(v)){let p=[];for(let i of v){if(typeof i==="object"&&i){if("text"in i)p.push(i.text);else if("name"in i){const m=FEISHU_CFG.selectMap[tk]&&FEISHU_CFG.selectMap[tk][fn];return m?(m[i.name]||i.name):i.name}}else if(typeof i==="string")p.push(i)}return p.length?p.join(""):null}if(typeof v==="object"){if("text"in v)return v.text;if("name"in v){const m=FEISHU_CFG.selectMap[tk]&&FEISHU_CFG.selectMap[tk][fn];return m?(m[v.name]||v.name):v.name}if("link"in v)return v.link}return String(v)}
+function msToDate(ms){if(!ms)return null;try{const d=new Date(ms);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}catch(e){return null}}
+function dateToMs(ds){if(!ds)return null;try{const d=new Date(ds);return isNaN(d)?null:Math.floor(d.getTime())}catch(e){return null}}
+async function fetchFsTable(tk){const info=FEISHU_CFG.tables[tk];if(!info)return[];const token=await getFsToken();let all=[],pt=null;while(true){let path=`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records?page_size=100`;if(pt)path+=`&page_token=${pt}`;const r=await fsFetch(path,{headers:{"Authorization":`Bearer ${token}`}});if(r.code!==0)throw new Error(`读取${tk}失败:${r.msg}`);const d=r.data||{};all.push(...(d.items||[]));if(!d.has_more)break;pt=d.page_token}let mapped=[];for(let rec of all){let item={id:rec.record_id||String(Date.now())};let fields=rec.fields||{};for(let[fn,ln]of Object.entries(info.fields)){let val=parseFsVal(fields[fn],tk,ln);if(ln==="date"&&typeof val==="number")val=msToDate(val);item[ln]=val}if(!("done"in item))item.done=false;if(!("pinned"in item))item.pinned=false;if(!("title"in item))item.title="";mapped.push(item)}return mapped}
+async function saveFeishuRecord(tableKey,item){try{const info=FEISHU_CFG.tables[tableKey];if(!info)return;const token=await getFsToken();const ff={};for(let[ln,fn]of Object.entries(info.fields).map(([k,v])=>[v,k])){let val=item[ln];if(val===undefined||val===null)continue;if(ln==="date"&&typeof val==="string"){const ms=dateToMs(val);if(ms)ff[fn]=ms;continue}const sm=SELECT_REVERSE[tableKey]&&SELECT_REVERSE[tableKey][ln];if(sm&&typeof val==="string"){ff[fn]=sm[val]||val;continue}ff[fn]=val}const isUpdate=!!item.id&&item.id.startsWith("rec");const path=isUpdate?`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records/${item.id}`:`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records`;const method=isUpdate?"PUT":"POST";const r=await fsFetch(path,{method,headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({fields:ff})});if(r.code!==0){console.log("飞书写回失败:",r.msg);return null}return r.data&&r.data.record?r.data.record.record_id:null}catch(e){console.log("飞书写回异常:",e.message);return null}}
+
+/* ============================================================
+   数据管理
+   ============================================================ */
+function isoToday(){return new Date().toISOString().slice(0,10)}
+const modOf=k=>CONFIG.modules.find(m=>m.key===k);
+const store={load(){const raw=localStorage.getItem(CONFIG.storageKey);if(raw){try{return JSON.parse(raw)}catch(e){}}const d={};CONFIG.modules.forEach(m=>d[m.key]=structuredClone(m.seed||[]));return d},save(){localStorage.setItem(CONFIG.storageKey,JSON.stringify(data))}};
+let data=store.load();
+let view="home";
+let cloudStatus="loading";
+
+async function syncFromCloud(){
+  try{
+    let cloud={};
+    for(let key of Object.keys(FEISHU_CFG.tables)){
+      try{cloud[key]=await fetchFsTable(key)}catch(e){console.log(`读取${key}失败:`,e.message);cloud[key]=[]}
+    }
+    let changed=false;
+    CONFIG.modules.forEach(m=>{if(cloud[m.key]&&Array.isArray(cloud[m.key])){data[m.key]=cloud[m.key];changed=true}});
+    if(changed)store.save();
+    cloudStatus="synced";
+    updateSyncBadge();
+    render();
+  }catch(e){
+    console.log("云端同步不可用:",e.message);
+    cloudStatus="offline";
+    updateSyncBadge();
+  }
+}
+function updateSyncBadge(){
+  const b=document.getElementById("syncBadge");
+  if(!b)return;
+  if(cloudStatus==="loading"){b.className="sync loading";b.textContent="同步中"}
+  else if(cloudStatus==="synced"){b.className="sync synced";b.textContent="已同步"}
+  else{b.className="sync offline";b.textContent="离线"}
+}
+
+/* ============================================================
+   渲染引擎
+   ============================================================ */
+function render(){
+  const el=document.getElementById("screen");
+  if(view==="home")el.innerHTML=renderHome();
+  else if(view==="todo")el.innerHTML=renderTodo();
+  else if(view==="checkin")el.innerHTML=renderCheckin();
+  else if(view==="more")el.innerHTML=renderMore();
+  else if(view.startsWith("mod:"))el.innerHTML=renderModule(view.slice(4));
+  bindEvents();
+}
+
+function renderHome(){
+  const now=new Date();
+  const dow=(now.getDay()+6)%7;
+  const q=CONFIG.quotes[dow]||"";
+  const todoItems=data.todo||[];
+  const doneCount=todoItems.filter(x=>x.done).length;
+  const todoPct=todoItems.length?Math.round(doneCount/todoItems.length*100):0;
+  const checkinItems=(data.checkin||[]).filter(x=>x.date===isoToday());
+  const checkinPct=checkinItems.length?Math.min(100,Math.round(checkinItems.length/2*100)):0;
+  const readItems=data.read||[];
+  const readPct=readItems.length?Math.round(readItems.reduce((s,x)=>s+Math.min(100,(x.current/x.target)*100||0),0)/readItems.length):0;
+  const sportToday=(data.sport||[]).filter(x=>x.date===isoToday());
+  const sportPct=sportToday.length?Math.min(100,Math.round(sportToday.length/3*100)):0;
+
+  let html=`<section class="clock-card">
+    <div class="time" id="homeClock">${pad(now.getHours())}:${pad(now.getMinutes())}</div>
+    <p class="quote">${q}</p>
+  </section>`;
+
+  html+=`<section class="sec-label">今日概览</section>`;
+  html+=`<section class="overview-grid">
+    ${ovRing("今日计划",todoPct,`${doneCount}/${todoItems.length} 项`,"var(--accent)")}
+    ${ovRing("工作进程",checkinPct,`今日 ${checkinItems.length} 条`,"var(--m1)")}
+    ${ovRing("阅读",readPct,`${readItems.length} 项`,"var(--m2)")}
+    ${ovRing("每日观看",sportPct,`今日 ${sportToday.length} 条`,"var(--m2)")}
+  </section>`;
+
+  html+=`<section class="sec-label">快速记录</section>`;
+  html+=`<section class="quick-row">
+    <button class="qbtn" data-quick="checkin"><span class="ic" style="background:#e8eee4;color:var(--m1)">${icon("activity",18)}</span><span class="lb">记进程</span></button>
+    <button class="qbtn" data-quick="note"><span class="ic" style="background:#eceaf0;color:var(--m5)">${icon("pen",18)}</span><span class="lb">记想法</span></button>
+    <button class="qbtn" data-quick="money"><span class="ic" style="background:#f0e8e4;color:var(--m4)">${icon("wallet",18)}</span><span class="lb">记一笔</span></button>
+    <button class="qbtn" data-quick="todo"><span class="ic" style="background:#e8e3d8;color:var(--accent)">${icon("list",18)}</span><span class="lb">记待办</span></button>
+  </section>`;
+
+  // 今日待办预览
+  const undone=todoItems.filter(x=>!x.done).slice(0,3);
+  if(undone.length){
+    html+=`<section class="sec-label">今日待办</section>`;
+    undone.forEach(item=>{
+      const mod=modOf("todo");
+      const sec=mod.sections.find(s=>s.key===item.section);
+      const pri=mod.priorities.find(p=>p.key===item.priority);
+      html+=`<button class="todo-item" data-toggle-todo="${item.id}">
+        <span class="todo-check">${icon("check",14,2.5)}</span>
+        <span class="todo-body">
+          <span class="todo-title">${esc(item.title)}</span>
+          <span class="todo-meta">
+            ${sec?`<span class="tag tag-${item.section}">${sec.label}</span>`:""}
+            ${pri?`<span class="tag tag-${item.priority.toLowerCase()}">${pri.label}</span>`:""}
+          </span>
+        </span>
+      </button>`;
+    });
+  }
+  return html;
+}
+
+function renderTodo(){
+  const mod=modOf("todo");
+  const items=data.todo||[];
+  let html=`<section class="sec-label">今日计划 · ${items.filter(x=>x.done).length}/${items.length} 完成</section>`;
+  for(let sec of mod.sections){
+    const secItems=items.filter(x=>x.section===sec.key);
+    if(secItems.length){
+      html+=`<section class="sec-title">${icon(sec.icon,16)} ${sec.label} · ${secItems.filter(x=>x.done).length}/${secItems.length}</section>`;
+      secItems.forEach(item=>{
+        const pri=mod.priorities.find(p=>p.key===item.priority);
+        html+=`<button class="todo-item" data-toggle-todo="${item.id}">
+          <span class="todo-check ${item.done?"done":""}">${icon("check",14,2.5)}</span>
+          <span class="todo-body">
+            <span class="todo-title ${item.done?"done":""}">${esc(item.title)}</span>
+            ${item.note?`<span class="todo-meta" style="font-size:11px;color:var(--text-2);">${esc(item.note)}</span>`:""}
+            <span class="todo-meta">${pri?`<span class="tag tag-${item.priority.toLowerCase()}">${pri.label}</span>`:""}</span>
+          </span>
+        </button>`;
+      });
+    }
+  }
+  if(!items.length)html+=emptyState("list","还没有待办事项");
+  return html;
+}
+
+function renderCheckin(){
+  const mod=modOf("checkin");
+  const items=(data.checkin||[]).filter(x=>x.date===isoToday());
+  let html=`<section class="sec-label">工作进程 · 今日 ${items.length} 条</section>`;
+  for(let sec of mod.sections){
+    const secItems=items.filter(x=>x.section===sec.key);
+    html+=`<section class="sec-title">${icon(sec.icon,16)} ${sec.label}</section>`;
+    if(secItems.length){
+      secItems.forEach(item=>{
+        html+=`<button class="note-card" data-edit="checkin:${item.id}">
+          <div class="nc-head">
+            <span class="nc-tag" style="background:var(--nested);color:var(--text-2)">${item.mood||""}</span>
+            <span class="nc-title">${esc(item.title)}</span>
+          </div>
+          ${item.content?`<p class="nc-body">${esc(item.content)}</p>`:""}
+          <p class="nc-date">${item.date||""}</p>
+        </button>`;
+      });
+    }else{
+      html+=`<p style="font-size:12px;color:var(--text-3);padding:8px 14px;">暂无记录</p>`;
+    }
+  }
+  if(!items.length)html+=emptyState("activity","今日还没有工作记录");
+  return html;
+}
+
+function renderMore(){
+  let html=`<section class="sec-label">全部模块</section>`;
+  html+=`<section class="mod-grid">`;
+  const mods=["read","sport","money","note","hot"];
+  mods.forEach(key=>{
+    const m=modOf(key);
+    const items=data[key]||[];
+    let stat="";
+    if(m.type==="progress")stat=`${items.length} 本`;
+    else if(m.type==="finance"){const exp=items.filter(x=>x.type==="expense").reduce((s,x)=>s+(x.amount||0),0);stat=`¥${exp} 支出`}
+    else stat=`${items.length} 条`;
+    html+=`<button class="mod-tile" data-view="mod:${key}">
+      <div class="mt-ic" style="background:var(--nested);color:${m.color}">${icon(m.icon,20)}</div>
+      <div class="mt-name">${m.name}</div>
+      <div class="mt-desc">${m.desc}</div>
+      <div class="mt-stat">${stat}</div>
+    </button>`;
+  });
+  html+=`</section>`;
+  return html;
+}
+
+function renderModule(key){
+  const m=modOf(key);
+  const items=data[key]||[];
+  let html=`<section class="sec-label">${m.name}</section>`;
+  if(m.type==="progress"){
+    items.forEach(item=>{
+      const pct=Math.min(100,Math.round((item.current/item.target)*100||0));
+      html+=`<button class="read-item" data-edit="read:${item.id}">
+        <div class="ri-title">${esc(item.title)}</div>
+        <div class="ri-bar"><div class="ri-fill" style="width:${pct}%;background:${m.color}"></div></div>
+        <div class="ri-meta"><span>${item.current}/${item.target} ${item.unit||"页"}</span><span>${pct}%</span></div>
+        ${item.note?`<p class="ri-note">${esc(item.note)}</p>`:""}
+      </button>`;
+    });
+    if(!items.length)html+=emptyState("book","还没有在读书目");
+  }
+  else if(m.type==="finance"){
+    const income=items.filter(x=>x.type==="income").reduce((s,x)=>s+(x.amount||0),0);
+    const expense=items.filter(x=>x.type==="expense").reduce((s,x)=>s+(x.amount||0),0);
+    html+=`<section class="money-summary">
+      <div class="money-sum-card"><div class="lb">收入</div><div class="vl" style="color:var(--m1)">¥${income}</div></div>
+      <div class="money-sum-card"><div class="lb">支出</div><div class="vl" style="color:var(--danger)">¥${expense}</div></div>
+      <div class="money-sum-card"><div class="lb">结余</div><div class="vl">¥${income-expense}</div></div>
+    </section>`;
+    items.slice().reverse().forEach(item=>{
+      html+=`<button class="money-item" data-edit="money:${item.id}">
+        <span class="mi-ic" style="background:var(--nested);color:${item.type==="income"?"var(--m1)":"var(--danger)"}">${icon(item.type==="income"?"plus":"wallet",16)}</span>
+        <span class="mi-body"><span class="mi-title">${esc(item.title)}</span><span class="mi-cat">${item.category||""} · ${item.date||""}</span></span>
+        <span class="mi-amount ${item.type}">${item.type==="income"?"+":"-"}¥${item.amount}</span>
+      </button>`;
+    });
+    if(!items.length)html+=emptyState("wallet","还没有记账记录");
+  }
+  else if(m.sections&&m.sections.length){
+    // 每日观看模块 - 先显示链接卡片
+    if(key==="sport"){
+      m.sections.forEach(sec=>{
+        html+=`<section class="sec-title">${icon(sec.icon,16)} ${sec.label}</section>`;
+        if(sec.links){
+          sec.links.forEach(lnk=>{
+            html+=`<a class="link-card" href="${lnk.url}" target="_blank" rel="noopener">
+              <span class="lc-ic">${icon("link",18)}</span>
+              <span class="lc-body"><span class="lc-name">${lnk.name}</span><span class="lc-desc">${lnk.desc||""}</span></span>
+              <span class="lc-arrow">${icon("chevron",18)}</span>
+            </a>`;
+          });
+        }
+        const secItems=items.filter(x=>x.section===sec.key);
+        secItems.forEach(item=>{
+          html+=`<button class="note-card" data-edit="sport:${item.id}">
+            <div class="nc-head"><span class="nc-tag" style="background:var(--nested);color:var(--text-2)">${item.mood||""}</span><span class="nc-title">${esc(item.title)}</span></div>
+            ${item.content?`<p class="nc-body">${esc(item.content)}</p>`:""}
+          </button>`;
+        });
+      });
+    } else {
+      m.sections.forEach(sec=>{
+        const secItems=items.filter(x=>x.section===sec.key);
+        if(secItems.length){
+          html+=`<section class="sec-title">${icon(sec.icon,16)} ${sec.label}</section>`;
+          secItems.forEach(item=>{
+            html+=`<button class="note-card" data-edit="${key}:${item.id}">
+              <div class="nc-head"><span class="nc-tag" style="background:var(--nested);color:var(--text-2)">${item.mood||""}</span><span class="nc-title">${esc(item.title)}</span></div>
+              ${item.content?`<p class="nc-body">${esc(item.content)}</p>`:""}
+              <p class="nc-date">${item.date||""}</p>
+            </button>`;
+          });
+        }
+      });
+      if(!items.length)html+=emptyState(m.icon,"还没有记录");
+    }
+  }
+  else if(m.linkable){
+    // 今日热点
+    items.forEach(item=>{
+      html+=`<a class="note-card" style="display:block;text-decoration:none;color:inherit" href="${item.url||"#"}" target="_blank" rel="noopener">
+        <div class="nc-head"><span class="nc-tag" style="background:var(--nested);color:var(--text-2)">${item.mood||""}</span><span class="nc-title">${esc(item.title)}</span></div>
+        ${item.content?`<p class="nc-body">${esc(item.content)}</p>`:""}
+        ${item.url?`<p class="nc-date">${item.url} ↗</p>`:""}
+      </a>`;
+    });
+    if(!items.length)html+=emptyState("flame","还没有热点记录");
+  }
+  else{
+    // 普通笔记
+    items.slice().reverse().forEach(item=>{
+      html+=`<button class="note-card" data-edit="${key}:${item.id}">
+        <div class="nc-head"><span class="nc-tag" style="background:var(--nested);color:var(--text-2)">${item.mood||""}</span><span class="nc-title">${esc(item.title)}</span></div>
+        ${item.content?`<p class="nc-body">${esc(item.content)}</p>`:""}
+        <p class="nc-date">${item.date||""}</p>
+      </button>`;
+    });
+    if(!items.length)html+=emptyState(m.icon,"还没有记录");
+  }
+  return html;
+}
+
+/* ============================================================
+   弹窗编辑器
+   ============================================================ */
+function openEditor(moduleKey,itemId){
+  const m=modOf(moduleKey);
+  const items=data[moduleKey]||[];
+  const item=itemId?items.find(x=>String(x.id)===String(itemId)):null;
+  const isNew=!item;
+  const editing=item?{...item}:{date:isoToday()};
+
+  let fields="";
+  if(m.type==="todo"){
+    fields+=textField("title","任务",editing.title||"");
+    fields+=chipField("section","分区",m.sections.map(s=>({key:s.key,label:s.label})),editing.section);
+    fields+=chipField("priority","优先级",m.priorities.map(p=>({key:p.key,label:p.label})),editing.priority);
+    fields+=textField("note","备注",editing.note||"");
+  } else if(m.type==="progress"){
+    fields+=textField("title","书名",editing.title||"");
+    fields+=numField("current","当前页",editing.current||0);
+    fields+=numField("target","目标页",editing.target||0);
+    fields+=textField("unit","单位",editing.unit||"页");
+    fields+=textArea("note","摘录想法",editing.note||"");
+  } else if(m.type==="finance"){
+    fields+=textField("title","项目",editing.title||"");
+    fields+=chipField("type","类型",[{key:"expense",label:"支出"},{key:"income",label:"收入"}],editing.type||"expense");
+    fields+=numField("amount","金额",editing.amount||0);
+    fields+=chipField("category","分类",m.categories.map(c=>({key:c,label:c})),editing.category);
+  } else {
+    // note type
+    fields+=textField("title","标题",editing.title||"");
+    if(m.sections&&m.sections.length&&!m.linkable){
+      fields+=chipField("section","分区",m.sections.map(s=>({key:s.key,label:s.label})),editing.section||(m.sections[0]&&m.sections[0].key));
+    }
+    fields+=textArea("content","内容",editing.content||"");
+    if(m.moods&&m.moods.length){
+      fields+=chipField("mood","标签",m.moods.map(mo=>({key:mo,label:mo})),editing.mood||(m.moods[0]||""));
+    }
+    if(m.linkable){
+      fields+=textField("url","链接 URL",editing.url||"");
+    }
+  }
+
+  const html=`<div class="modal-mask" id="modalMask">
+    <div class="modal" id="modalSheet">
+      <div class="mh">
+        <span class="mt">${isNew?"新建":"编辑"} · ${m.name}</span>
+        <button class="mc" id="modalClose">${icon("close",20)}</button>
+      </div>
+      <div id="modalFields">${fields}</div>
+      <div class="btn-row">
+        ${!isNew?`<button class="btn-danger" id="modalDelete">删除</button>`:""}
+        <button class="btn-primary" id="modalSave">保存</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById("modalContainer").innerHTML=html;
+
+  // 绑定事件
+  document.getElementById("modalClose").onclick=closeModal;
+  document.getElementById("modalMask").onclick=e=>{if(e.target.id==="modalMask")closeModal()};
+  document.getElementById("modalSave").onclick=()=>saveFromEditor(moduleKey,editing,isNew);
+  if(!isNew)document.getElementById("modalDelete").onclick=()=>deleteRecord(moduleKey,itemId);
+
+  // chip 选择
+  document.querySelectorAll(".chip[data-field]").forEach(c=>{
+    c.onclick=()=>{
+      const f=c.dataset.field;
+      document.querySelectorAll(`.chip[data-field="${f}"]`).forEach(x=>x.classList.remove("active"));
+      c.classList.add("active");
+    };
+  });
+}
+
+function closeModal(){
+  document.getElementById("modalContainer").innerHTML="";
+}
+
+function getChipValue(field){
+  const el=document.querySelector(`.chip[data-field="${field}"].active`);
+  return el?el.dataset.value:null;
+}
+function getInputValue(field){
+  const el=document.getElementById("field-"+field);
+  return el?el.value.trim():"";
+}
+
+function saveFromEditor(moduleKey,editing,isNew){
+  const m=modOf(moduleKey);
+  const obj={...editing};
+  if(m.type==="todo"){
+    obj.title=getInputValue("title");
+    obj.section=getChipValue("section")||"work";
+    obj.priority=getChipValue("priority")||"P2";
+    obj.note=getInputValue("note");
+    if(isNew)obj.done=false;
+  } else if(m.type==="progress"){
+    obj.title=getInputValue("title");
+    obj.current=parseInt(getInputValue("current"))||0;
+    obj.target=parseInt(getInputValue("target"))||0;
+    obj.unit=getInputValue("unit")||"页";
+    obj.note=getInputValue("note");
+  } else if(m.type==="finance"){
+    obj.title=getInputValue("title");
+    obj.type=getChipValue("type")||"expense";
+    obj.amount=parseFloat(getInputValue("amount"))||0;
+    obj.category=getChipValue("category")||"其他";
+    if(isNew)obj.date=isoToday();
+  } else {
+    obj.title=getInputValue("title");
+    if(m.sections&&m.sections.length&&!m.linkable)obj.section=getChipValue("section");
+    obj.content=getInputValue("content");
+    if(m.moods&&m.moods.length)obj.mood=getChipValue("mood");
+    if(m.linkable)obj.url=getInputValue("url");
+    if(isNew)obj.date=isoToday();
+  }
+
+  if(!obj.title){showToast("请填写标题");return}
+
+  if(isNew){
+    obj.id="local_"+Date.now();
+    data[moduleKey]=data[moduleKey]||[];
+    data[moduleKey].push(obj);
+  } else {
+    const idx=data[moduleKey].findIndex(x=>String(x.id)===String(obj.id));
+    if(idx>=0)data[moduleKey][idx]=obj;
+  }
+  store.save();
+  closeModal();
+  showLoading("保存中...");
+  saveFeishuRecord(moduleKey,obj).then(newId=>{
+    if(newId&&isNew){
+      const idx=data[moduleKey].findIndex(x=>String(x.id)===String(obj.id));
+      if(idx>=0){data[moduleKey][idx].id=newId;store.save()}
+    }
+    hideLoading();
+    showToast("已保存");
+    render();
+  }).catch(()=>{
+    hideLoading();
+    showToast("已保存到本地（云端同步失败）");
+    render();
+  });
+}
+
+function deleteRecord(moduleKey,itemId){
+  data[moduleKey]=data[moduleKey].filter(x=>String(x.id)!==String(itemId));
+  store.save();
+  closeModal();
+  render();
+  showToast("已删除");
+}
+
+/* ============================================================
+   表单字段组件
+   ============================================================ */
+function textField(name,label,val){
+  return `<div class="field"><label>${label}</label><input id="field-${name}" type="text" value="${esc(val)}" placeholder="输入${label}"/></div>`;
+}
+function numField(name,label,val){
+  return `<div class="field"><label>${label}</label><input id="field-${name}" type="number" value="${val}" placeholder="0"/></div>`;
+}
+function textArea(name,label,val){
+  return `<div class="field"><label>${label}</label><textarea id="field-${name}" placeholder="输入${label}">${esc(val)}</textarea></div>`;
+}
+function chipField(name,label,opts,current){
+  let chips=opts.map(o=>`<button class="chip ${o.key===current?"active":""}" data-field="${name}" data-value="${o.key}">${o.label}</button>`).join("");
+  return `<div class="field"><label>${label}</label><div class="chip-row">${chips}</div></div>`;
+}
+
+/* ============================================================
+   事件绑定
+   ============================================================ */
+function bindEvents(){
+  // 底部导航
+  document.querySelectorAll(".tab").forEach(tab=>{
+    tab.onclick=()=>{
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      tab.classList.add("active");
+      view=tab.dataset.view;
+      render();
+    };
+  });
+
+  // 模块网格点击
+  document.querySelectorAll("[data-view]").forEach(el=>{
+    if(el.classList.contains("tab"))return;
+    el.onclick=()=>{
+      const v=el.dataset.view;
+      if(v&&v.startsWith("mod:")){
+        view=v;
+        document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+        render();
+      }
+    };
+  });
+
+  // 待办勾选
+  document.querySelectorAll("[data-toggle-todo]").forEach(el=>{
+    el.onclick=e=>{
+      e.preventDefault();
+      const id=el.dataset.toggleTodo;
+      const item=(data.todo||[]).find(x=>String(x.id)===String(id));
+      if(item){
+        item.done=!item.done;
+        store.save();
+        saveFeishuRecord("todo",item);
+        render();
+      }
+    };
+  });
+
+  // 编辑卡片
+  document.querySelectorAll("[data-edit]").forEach(el=>{
+    el.onclick=e=>{
+      e.preventDefault();
+      const [modKey,itemId]=el.dataset.edit.split(":");
+      openEditor(modKey,itemId);
+    };
+  });
+
+  // 快速记录
+  document.querySelectorAll("[data-quick]").forEach(el=>{
+    el.onclick=()=>openEditor(el.dataset.quick,null);
+  });
+
+  // FAB 按钮
+  const fab=document.getElementById("fabBtn");
+  if(fab){
+    fab.onclick=()=>{
+      let modKey="note";
+      if(view==="todo")modKey="todo";
+      else if(view==="checkin")modKey="checkin";
+      else if(view.startsWith("mod:"))modKey=view.slice(4);
+      openEditor(modKey,null);
+    };
+  }
+}
+
+/* ============================================================
+   工具函数
+   ============================================================ */
+function pad(n){return String(n).padStart(2,"0")}
+function esc(s){if(s===null||s===undefined)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function ovRing(label,pct,sub,color){
+  const r=22,c=2*Math.PI*r,off=c*(1-Math.min(100,pct)/100);
+  return `<section class="ov-card">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/>
+      <circle cx="28" cy="28" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>
+      <span class="pct">${pct}%</span>
+    </div>
+    <div class="lbl">${label}</div>
+    <div class="sub">${sub}</div>
+  </section>`;
+}
+function emptyState(ic,msg){
+  return `<section class="empty">${icon(ic,40,1.2)}<p>${msg}</p></section>`;
+}
+function showToast(msg){
+  const t=document.createElement("div");
+  t.className="loading-toast";
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2000);
+}
+function showLoading(msg){
+  const t=document.createElement("div");
+  t.className="loading-toast";
+  t.id="loadingToast";
+  t.textContent=msg;
+  document.body.appendChild(t);
+}
+function hideLoading(){
+  const t=document.getElementById("loadingToast");
+  if(t)t.remove();
+}
+
+/* ============================================================
+   初始化
+   ============================================================ */
+function updateDate(){
+  const n=new Date();
+  const days=["周日","周一","周二","周三","周四","周五","周六"];
+  const el=document.getElementById("topDate");
+  if(el)el.textContent=`${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日 ${days[n.getDay()]}`;
+}
+
+function updateClock(){
+  const el=document.getElementById("homeClock");
+  if(el){const n=new Date();el.textContent=`${pad(n.getHours())}:${pad(n.getMinutes())}`}
+}
+
+updateDate();
+render();
+syncFromCloud();
+
+// 每分钟更新时钟
+setInterval(updateClock,60000);
+// 每5分钟自动同步
+setInterval(()=>{if(cloudStatus!=="loading")syncFromCloud()},300000);
+
+</script>
+</body>
+</html>
