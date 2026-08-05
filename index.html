@@ -794,7 +794,7 @@ let view = "home";
 const FEISHU_CFG = {
   appId:"cli_aaf98b2274789bdd", appSecret:"RKgD00k7Gq19hvYxnH7DogPRE0JgFsu0",
   baseToken:"Z1bjblSqkaMxoAs5u7dc6p2fnPf",
-  corsProxy:"https://proxy.cors.sh/",
+  corsProxies:["https://proxy.cors.sh/","https://corsproxy.io/?url=","https://api.allorigins.win/raw?url="],
   tables:{
     todo:{id:"tbl15ffmddGshUt1",fields:{"任务":"title","分区":"section","优先级":"priority","完成":"done","备注":"note","置顶":"pinned","日期":"date"}},
     checkin:{id:"tblSEm1UwCeLabhv",fields:{"标题":"title","分区":"section","内容":"content","状态":"mood","置顶":"pinned","日期":"date"}},
@@ -811,14 +811,34 @@ const FEISHU_CFG = {
   }
 };
 let _fsToken=null, _fsTokenExp=0;
+function fsProxyUrl(feishuPath){
+  const p=FEISHU_CFG.corsProxies[_proxyIdx%FEISHU_CFG.corsProxies.length];
+  const full="https://open.feishu.cn/open-apis"+feishuPath;
+  return p.includes("?url=")?p+encodeURIComponent(full):p+full;
+}
+let _proxyIdx=0;
+async function fsFetch(feishuPath,opts){
+  const ac=new AbortController(); const to=setTimeout(()=>ac.abort(),10000);
+  try{
+    const url=fsProxyUrl(feishuPath);
+    const r=await fetch(url,{...opts,signal:ac.signal});
+    clearTimeout(to);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return await r.json();
+  }catch(e){clearTimeout(to);_proxyIdx++;throw e;}
+}
 async function getFsToken(){
   if(_fsToken && Date.now()<_fsTokenExp) return _fsToken;
-  const url=FEISHU_CFG.corsProxy+"https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal";
-  const resp=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({app_id:FEISHU_CFG.appId,app_secret:FEISHU_CFG.appSecret})});
-  const r=await resp.json();
-  if(r.code!==0) throw new Error("飞书 token 获取失败");
-  _fsToken=r.tenant_access_token; _fsTokenExp=Date.now()+(r.expire-300)*1000;
-  return _fsToken;
+  let lastErr;
+  for(let i=0;i<FEISHU_CFG.corsProxies.length;i++){
+    try{
+      const r=await fsFetch("/auth/v3/tenant_access_token/internal",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({app_id:FEISHU_CFG.appId,app_secret:FEISHU_CFG.appSecret})});
+      if(r.code!==0) throw new Error(r.msg);
+      _fsToken=r.tenant_access_token; _fsTokenExp=Date.now()+(r.expire-300)*1000;
+      return _fsToken;
+    }catch(e){lastErr=e;_proxyIdx++;}
+  }
+  throw lastErr||new Error("all proxies failed");
 }
 function parseFsVal(v,tk,fn){
   if(v===null||v===undefined) return null;
@@ -837,9 +857,7 @@ async function fetchFsTable(tk){
   while(true){
     let path=`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records?page_size=100`;
     if(pt)path+=`&page_token=${pt}`;
-    const url=FEISHU_CFG.corsProxy+"https://open.feishu.cn/open-apis"+path;
-    const resp=await fetch(url,{headers:{"Authorization":`Bearer ${token}`}});
-    const r=await resp.json();
+    const r=await fsFetch(path,{headers:{"Authorization":`Bearer ${token}`}});
     if(r.code!==0) throw new Error(`读取${tk}失败:${r.msg}`);
     const d=r.data||{}; all.push(...(d.items||[]));
     if(!d.has_more)break; pt=d.page_token;
@@ -918,9 +936,7 @@ async function saveFeishuRecord(tableKey,item){
     const isUpdate=!!item.id&&item.id.startsWith("rec");
     const path=isUpdate?`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records/${item.id}`:`/bitable/v1/apps/${FEISHU_CFG.baseToken}/tables/${info.id}/records`;
     const method=isUpdate?"PUT":"POST";
-    const url=FEISHU_CFG.corsProxy+"https://open.feishu.cn/open-apis"+path;
-    const resp=await fetch(url,{method,headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({fields:ff})});
-    const r=await resp.json();
+    const r=await fsFetch(path,{method,headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({fields:ff})});
     if(r.code!==0){console.log("飞书写回失败:",r.msg);return null;}
     return r.data&&r.data.record?r.data.record.record_id:null;
   }catch(e){console.log("飞书写回异常:",e.message);return null;}
